@@ -21,16 +21,14 @@ elseif(X64_BUILD)
     set(SDL_LIBS 
         mingw32
         SDL2main
-        SDL2
-        SDL2_image)
+        SDL2)
     set(SDL_INCLUDE_PATH ${EXTERNAL}/sdl_mingw/x64/include/SDL2)
     set(SDL_LIB_PATH ${EXTERNAL}/sdl_mingw/x64/lib)
 else()
     set(SDL_LIBS 
         mingw32
         SDL2main
-        SDL2
-        SDL2_image)
+        SDL2)
     set(SDL_INCLUDE_PATH ${EXTERNAL}/sdl_mingw/i686/include/SDL2)
     set(SDL_LIB_PATH ${EXTERNAL}/sdl_mingw/i686/lib)
 endif()

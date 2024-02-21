@@ -17,6 +17,8 @@ if(MSVC)
     else()
         set(SDL_LIB_PATH ${EXTERNAL}/sdl_vc/lib/x86)
     endif()
+    set(SDL_BIN_PATH ${SDL_LIB_PATH}/SDL2.dll)
+
 elseif(X64_BUILD)
     set(SDL_LIBS 
         mingw32
@@ -24,6 +26,7 @@ elseif(X64_BUILD)
         SDL2)
     set(SDL_INCLUDE_PATH ${EXTERNAL}/sdl_mingw/x64/include/SDL2)
     set(SDL_LIB_PATH ${EXTERNAL}/sdl_mingw/x64/lib)
+    set(SDL_BIN_PATH ${EXTERNAL}/sdl_mingw/x64/lib/SDL2.dll)
 else()
     set(SDL_LIBS 
         mingw32
@@ -31,6 +34,7 @@ else()
         SDL2)
     set(SDL_INCLUDE_PATH ${EXTERNAL}/sdl_mingw/i686/include/SDL2)
     set(SDL_LIB_PATH ${EXTERNAL}/sdl_mingw/i686/lib)
+    set(SDL_BIN_PATH ${EXTERNAL}/sdl_mingw/i686/lib/SDL2.dll)
 endif()
 
 message("SDL_INCLUDE_PATH ${SDL_INCLUDE_PATH}")
@@ -38,5 +42,7 @@ message("SDL_LIB_PATH ${SDL_LIB_PATH}")
 
 include_directories(${SDL_INCLUDE_PATH})
 link_directories(${SDL_LIB_PATH})
+
+include_directories(${EXTERNAL}/cglm)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lesson_3)

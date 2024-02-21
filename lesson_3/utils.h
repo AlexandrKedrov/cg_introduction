@@ -17,7 +17,7 @@ struct DrawBuffer
 };
 
 
-void draw_buffer_create(int width, int  height, SDL_Renderer* renderer, DrawBuffer* out)
+inline void draw_buffer_create(int width, int  height, SDL_Renderer* renderer, DrawBuffer* out)
 {
     out->width = width;
     out->height = height;
@@ -28,24 +28,24 @@ void draw_buffer_create(int width, int  height, SDL_Renderer* renderer, DrawBuff
 }
 
 
-void draw_buffer_lock(DrawBuffer* draw_buffer)
+inline void draw_buffer_lock(DrawBuffer* draw_buffer)
 {
     SDL_LockTexture(draw_buffer->texture, NULL, reinterpret_cast<void**>(&draw_buffer->buffer), &draw_buffer->pitch);
 }
 
-void draw_buffer_unlock(DrawBuffer* draw_buffer)
+inline void draw_buffer_unlock(DrawBuffer* draw_buffer)
 {
     SDL_UnlockTexture(draw_buffer->texture);
     draw_buffer->buffer = NULL;
     draw_buffer->pitch = NULL;
 }
 
-void draw_buffer_show(DrawBuffer* draw_buffer)
+inline void draw_buffer_show(DrawBuffer* draw_buffer)
 {
     SDL_RenderCopy(draw_buffer->renderer, draw_buffer->texture, NULL, NULL);
 }
 
-void draw_buffer_destroy(DrawBuffer* in)
+inline void draw_buffer_destroy(DrawBuffer* in)
 {
     SDL_DestroyTexture(in->texture);
 }

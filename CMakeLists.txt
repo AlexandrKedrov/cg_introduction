@@ -26,7 +26,7 @@ elseif(X64_BUILD)
         SDL2)
     set(SDL_INCLUDE_PATH ${EXTERNAL}/sdl_mingw/x64/include/SDL2)
     set(SDL_LIB_PATH ${EXTERNAL}/sdl_mingw/x64/lib)
-    set(SDL_BIN_PATH ${EXTERNAL}/sdl_mingw/x64/lib/SDL2.dll)
+    set(SDL_BIN_PATH ${EXTERNAL}/sdl_mingw/x64/bin/SDL2.dll)
 else()
     set(SDL_LIBS 
         mingw32
@@ -34,7 +34,7 @@ else()
         SDL2)
     set(SDL_INCLUDE_PATH ${EXTERNAL}/sdl_mingw/i686/include/SDL2)
     set(SDL_LIB_PATH ${EXTERNAL}/sdl_mingw/i686/lib)
-    set(SDL_BIN_PATH ${EXTERNAL}/sdl_mingw/i686/lib/SDL2.dll)
+    set(SDL_BIN_PATH ${EXTERNAL}/sdl_mingw/i686/bin/SDL2.dll)
 endif()
 
 message("SDL_INCLUDE_PATH ${SDL_INCLUDE_PATH}")

@@ -153,7 +153,7 @@ void fill_image(DrawBuffer* draw_buffer)
         {0, 0, 0}, // pos
         0.1f,      // ambient
         0.5f,      // diffuse
-        1.f        // specular 
+        0.2f        // specular 
     };
 
 #pragma omp parallel for

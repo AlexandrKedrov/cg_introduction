@@ -66,10 +66,12 @@ Color calc_light(HitInfo* info, Light* light, vec3 camera_pos, Color* diffuse)
     };
 }
 
-bool trace_sphere(vec3 ray, vec3 sphere_pos, float radius, HitInfo* info)
+bool trace_sphere(vec3 camera_pos, vec3 ray, vec3 sphere_pos, float radius, HitInfo* info)
 {
-    float distance_to_sphere = glm_vec3_norm(sphere_pos);
-    float cosA = glm_dot(ray, sphere_pos) / distance_to_sphere;
+    vec3 camera_sphere_pos;
+    glm_vec3_sub(sphere_pos, camera_pos, camera_sphere_pos);
+    float distance_to_sphere = glm_vec3_norm(camera_sphere_pos);
+    float cosA = glm_dot(ray, camera_sphere_pos) / distance_to_sphere;
 
     if(cosA < 0)
     {
@@ -77,7 +79,7 @@ bool trace_sphere(vec3 ray, vec3 sphere_pos, float radius, HitInfo* info)
     }
 
     vec3 cross;
-    glm_cross(ray, sphere_pos, cross);
+    glm_cross(ray, camera_sphere_pos, cross);
     float h = glm_vec3_norm(cross);
 
     if(h > radius)
@@ -87,6 +89,7 @@ bool trace_sphere(vec3 ray, vec3 sphere_pos, float radius, HitInfo* info)
 
     float d = sqrtf(radius * radius - h * h);
     glm_vec3_scale(ray, cosA * distance_to_sphere - d, info->pos);
+    glm_vec3_add(info->pos, camera_pos, info->pos);
     glm_vec3_sub(info->pos, sphere_pos, info->normal);
     glm_normalize(info->normal);
     return true;
@@ -102,6 +105,7 @@ Color calc_color(
     vec4 ray;
     glm_mat4_mulv(screen_projection_inverse, screen_point, ray);
     glm_vec4_divs(ray, ray[3], ray);
+    glm_vec3_sub(ray, camera_pos, ray);
     glm_normalize(ray);
 
     float min_distance = std::numeric_limits<float>::max();
@@ -113,7 +117,7 @@ Color calc_color(
     for(int i = 0; i < sphere_count; ++i)
     {
         HitInfo info;
-        if(trace_sphere(ray, spheres[i].pos, radius, &info))
+        if(trace_sphere(camera_pos, ray, spheres[i].pos, radius, &info))
         {
             float distance = glm_vec3_norm2(info.pos);
             if(distance < min_distance)
@@ -175,9 +179,16 @@ void fill_image(DrawBuffer* draw_buffer)
     glm_perspective_rh_no(
         glm_rad(45.f),
         SCREEN_WIDTH / static_cast<float>(SCREEN_HEIGHT),
-        1e-2, 1e3,
+        1e-2f, 1e3f,
         projection 
     );
+
+    vec3 camera_pos = { 100.f, 100.f, 0.f };
+    vec3 look_at_pos = {0.f, 0.f, -132.f};
+    vec3 up_vector = {0.f, 1.f, 0.f};
+
+    mat4 look_at;
+    glm_lookat(camera_pos, look_at_pos, up_vector, look_at);    
 
     mat4 screen;
     glm_mat4_identity(screen);
@@ -186,10 +197,11 @@ void fill_image(DrawBuffer* draw_buffer)
     screen[1][1] = -SCREEN_HEIGHT * 0.5f;
     screen[3][1] = SCREEN_HEIGHT * 0.5f;
 
-    mat4 screen_projection;
+    mat4 screen_projection_model;
     mat4 screen_projection_inverse;
-    glm_mat4_mul(screen, projection, screen_projection);
-    glm_mat4_inv(screen_projection, screen_projection_inverse);
+    glm_mat4_mul(projection, look_at, screen_projection_model);
+    glm_mat4_mul(screen, screen_projection_model, screen_projection_model);
+    glm_mat4_inv(screen_projection_model, screen_projection_inverse);
 
 
 
@@ -232,7 +244,6 @@ void fill_image(DrawBuffer* draw_buffer)
     {
         for(int col = 0; col < draw_buffer->width; ++col)
         {
-            vec3 camera_pos = { 0, 0, 0 };
             auto m = [&](float x) -> Color
             {
                 auto fun = [&](float y) -> Color
@@ -243,6 +254,7 @@ void fill_image(DrawBuffer* draw_buffer)
 
                 return gauss(row, row + 1.f, fun);
             };
+
             draw_buffer->buffer[draw_buffer->width * row + col] = 
                 gauss(col, col + 1.f, m);
         }

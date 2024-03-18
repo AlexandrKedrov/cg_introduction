@@ -3,6 +3,7 @@
 #include <cglm/cglm.h>
 #include <stdlib.h>
 #include <limits>
+#include <functional>
 
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
@@ -91,6 +92,76 @@ bool trace_sphere(vec3 ray, vec3 sphere_pos, float radius, HitInfo* info)
     return true;
 }
 
+Color calc_color(
+    float x, float y,
+    mat4 screen_projection_inverse, vec3 camera_pos,
+    Sphere* spheres, int sphere_count, float radius,
+    Light* light)
+{
+    vec4 screen_point = {x, y, -1.f, 1.f};
+    vec4 ray;
+    glm_mat4_mulv(screen_projection_inverse, screen_point, ray);
+    glm_vec4_divs(ray, ray[3], ray);
+    glm_normalize(ray);
+
+    float min_distance = std::numeric_limits<float>::max();
+
+    Color color = {0, 0, 0, 0};
+    HitInfo info_closest;
+    Sphere sphere_closest;
+    bool bHit = false;
+    for(int i = 0; i < sphere_count; ++i)
+    {
+        HitInfo info;
+        if(trace_sphere(ray, spheres[i].pos, radius, &info))
+        {
+            float distance = glm_vec3_norm2(info.pos);
+            if(distance < min_distance)
+            {
+                bHit = true;
+                info_closest = info;
+                sphere_closest = spheres[i];
+                min_distance = distance;
+            }
+        }
+    }
+
+    if(bHit)
+    {
+        color = calc_light(&info_closest, light, camera_pos, &sphere_closest.color);
+    }
+
+    return color;
+}
+
+Color gauss(float a, float b, std::function<Color(float)> fun)
+{
+    float scale = (b - a) * 0.5f;
+    float shift = (b + a) * 0.5f;
+
+    float x0 = 0;
+    float x1 = sqrtf(3.f / 5.f);
+    float x2 = -x1;
+
+    float w0 = 8.f / 9.f;
+    float w1 = 5.f / 9.f;
+    float w2 = w1;
+
+    Color value0 = fun(scale * x0 + shift);
+    Color value1 = fun(scale * x1 + shift);
+    Color value2 = fun(scale * x2 + shift);
+
+    float red = scale * (w0 * value0.color[0] + w1 * value1.color[0] + w2 * value2.color[0]);
+    float green = scale * (w0 * value0.color[1] + w1 * value1.color[1] + w2 * value2.color[1]);
+    float blue = scale * (w0 * value0.color[2] + w1 * value1.color[2] + w2 * value2.color[2]);
+
+    return {
+        static_cast <unsigned char>(red >= 255.f ? 255 : red),
+        static_cast<unsigned char>(green >= 255.f ? 255 : green),
+        static_cast<unsigned char>(blue >= 255.f ? 255 : blue),
+        0
+    };
+}
 
 void fill_image(DrawBuffer* draw_buffer)
 {
@@ -161,44 +232,22 @@ void fill_image(DrawBuffer* draw_buffer)
     {
         for(int col = 0; col < draw_buffer->width; ++col)
         {
-            vec4 screen_point = {col + 0.5f, row + 0.5f, -1.f, 1.f};
-            vec4 ray;
-            glm_mat4_mulv(screen_projection_inverse, screen_point, ray);
-            glm_vec4_divs(ray, ray[3], ray);
-            glm_normalize(ray);
-
-            float min_distance = std::numeric_limits<float>::max();
-
-            draw_buffer->buffer[draw_buffer->width * row + col] = {0, 0, 0, 0};
-            HitInfo info_closest;
-            Sphere sphere_closest;
-            bool bHit = false;
-            for(int i = 0; i < sphere_count; ++i)
-            {
-                HitInfo info;
-                if(trace_sphere(ray, spheres[i].pos, radius, &info))
-                {
-                    float distance = glm_vec3_norm2(info.pos);
-                    if(distance < min_distance)
-                    {
-                        bHit = true;
-                        info_closest = info;
-                        sphere_closest = spheres[i];
-                        min_distance = distance;
-                    }
-                }
-            }
-
             vec3 camera_pos = { 0, 0, 0 };
-
-            if(bHit)
+            auto m = [&](float x) -> Color
             {
-                draw_buffer->buffer[draw_buffer->width * row + col] = calc_light(&info_closest, &light, camera_pos, &sphere_closest.color);
-            }
+                auto fun = [&](float y) -> Color
+                {
+                    return calc_color(x, y, screen_projection_inverse,
+                    camera_pos, spheres, sphere_count, radius, &light); 
+                };
+
+                return gauss(row, row + 1.f, fun);
+            };
+            draw_buffer->buffer[draw_buffer->width * row + col] = 
+                gauss(col, col + 1.f, m);
         }
     }
 }
-
 
 int main(int argc, char** argv)
 {

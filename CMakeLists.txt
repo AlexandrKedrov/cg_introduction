@@ -47,3 +47,4 @@ include_directories(${EXTERNAL}/cglm)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lesson_3)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lesson_4)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lesson_5)

@@ -4,15 +4,11 @@
 #include <stdlib.h>
 #include <limits>
 #include <functional>
+#include "../lesson_5/triangle.h"
+#include <fstream>
 
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
-
-struct HitInfo
-{
-    vec3 pos;
-    vec3 normal;
-};
 
 struct Light
 {
@@ -101,6 +97,14 @@ Color calc_color(
     Sphere* spheres, int sphere_count, float radius,
     Light* light)
 {
+
+    MeshUtils::Triangle triangle = 
+    {
+        {-50.f, -50.f, -130.f},
+        {0.f, 50.f, -130.f},
+        {50.f, -50.f, -130.f}
+    };
+
     vec4 screen_point = {x, y, -1.f, 1.f};
     vec4 ray;
     glm_mat4_mulv(screen_projection_inverse, screen_point, ray);
@@ -117,7 +121,18 @@ Color calc_color(
     for(int i = 0; i < sphere_count; ++i)
     {
         HitInfo info;
-        if(trace_sphere(camera_pos, ray, spheres[i].pos, radius, &info))
+        // if(trace_sphere(camera_pos, ray, spheres[i].pos, radius, &info))
+        // {
+        //     float distance = glm_vec3_norm2(info.pos);
+        //     if(distance < min_distance)
+        //     {
+        //         bHit = true;
+        //         info_closest = info;
+        //         sphere_closest = spheres[i];
+        //         min_distance = distance;
+        //     }
+        // }
+        if(MeshUtils::trace_triangle(camera_pos, ray, &triangle, &info))
         {
             float distance = glm_vec3_norm2(info.pos);
             if(distance < min_distance)
@@ -128,6 +143,7 @@ Color calc_color(
                 min_distance = distance;
             }
         }
+        break;
     }
 
     if(bHit)
@@ -263,6 +279,14 @@ void fill_image(DrawBuffer* draw_buffer)
 
 int main(int argc, char** argv)
 {
+    std::ifstream input("teapot.obj");
+    MeshUtils::Mesh mesh;
+
+    MeshUtils::read_from_obj(input, &mesh);
+
+    printf("vertices count %f\n", mesh.vertices.size() / 3.f);
+    printf("primitives count %f\n", mesh.indices.size() / 3.f);
+
     mat4 projection;
     glm_perspective_rh_no(
         glm_rad(80.f),

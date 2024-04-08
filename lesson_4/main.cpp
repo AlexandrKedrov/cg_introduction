@@ -95,7 +95,7 @@ Color calc_color(
     float x, float y,
     mat4 screen_projection_inverse, vec3 camera_pos,
     Sphere* spheres, int sphere_count, float radius,
-    Light* light)
+    Light* light, MeshUtils::MeshInstance* mesh)
 {
 
     MeshUtils::Triangle triangle = 
@@ -132,7 +132,7 @@ Color calc_color(
         //         min_distance = distance;
         //     }
         // }
-        if(MeshUtils::trace_triangle(camera_pos, ray, &triangle, &info))
+        if(MeshUtils::trace_mesh(camera_pos, ray, mesh, &info))
         {
             float distance = glm_vec3_norm2(info.pos);
             if(distance < min_distance)
@@ -183,7 +183,7 @@ Color gauss(float a, float b, std::function<Color(float)> fun)
     };
 }
 
-void fill_image(DrawBuffer* draw_buffer)
+void fill_image(DrawBuffer* draw_buffer, MeshUtils::MeshInstance* mesh)
 {
     const Color colors[] {
         {255, 0, 0},
@@ -265,7 +265,7 @@ void fill_image(DrawBuffer* draw_buffer)
                 auto fun = [&](float y) -> Color
                 {
                     return calc_color(x, y, screen_projection_inverse,
-                    camera_pos, spheres, sphere_count, radius, &light); 
+                    camera_pos, spheres, sphere_count, radius, &light, mesh); 
                 };
 
                 return gauss(row, row + 1.f, fun);
@@ -279,13 +279,23 @@ void fill_image(DrawBuffer* draw_buffer)
 
 int main(int argc, char** argv)
 {
-    std::ifstream input("teapot.obj");
+    std::ifstream input("cube.obj");
     MeshUtils::Mesh mesh;
 
     MeshUtils::read_from_obj(input, &mesh);
 
     printf("vertices count %f\n", mesh.vertices.size() / 3.f);
     printf("primitives count %f\n", mesh.indices.size() / 3.f);
+    printf("MaxPoint %f %f %f\n", mesh.maxPoint[0], mesh.maxPoint[1], mesh.maxPoint[2]);
+    printf("MinPoint %f %f %f\n", mesh.minPoint[0], mesh.minPoint[1], mesh.minPoint[2]);
+
+    MeshUtils::MeshInstance mesh_instance;
+    mesh_instance.mesh = &mesh;
+    glm_mat4_identity(mesh_instance.transform);
+    vec3 translate = {0.f, 0.f, -132.f};
+    vec3 scale = {60.f, 60.f, 60.f};
+    glm_translate(mesh_instance.transform, translate);
+    glm_scale(mesh_instance.transform, scale);
 
     mat4 projection;
     glm_perspective_rh_no(
@@ -359,7 +369,7 @@ int main(int argc, char** argv)
 
     // Рисование на экране
     draw_buffer_lock(&draw_buffer);
-    fill_image(&draw_buffer);
+    fill_image(&draw_buffer, &mesh_instance);
     draw_buffer_unlock(&draw_buffer);
     draw_buffer_show(&draw_buffer);
     

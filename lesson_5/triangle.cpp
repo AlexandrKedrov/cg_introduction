@@ -1,10 +1,52 @@
 #include "triangle.h"
 #include <string>
+#include <limits>
 
 namespace MeshUtils
 {
+    bool trace_mesh(vec3 camera_pos, vec3 ray, MeshInstance* mesh_instance, HitInfo* info)
+    {
+        bool wasHit = false;
+        float closest_distance2 = std::numeric_limits<float>::max();
+
+        for(size_t i = 0; i < mesh_instance->mesh->indices.size(); i += 3)
+        {
+            Triangle triangle;
+            HitInfo temp_info;
+
+            uint32_t i0 = mesh_instance->mesh->indices[i];
+            uint32_t i1 = mesh_instance->mesh->indices[i + 1];
+            uint32_t i2 = mesh_instance->mesh->indices[i + 2];
+
+            glm_mat4_mulv3(mesh_instance->transform, &mesh_instance->mesh->vertices[i0 * 3], 1.f, triangle.p0);
+            glm_mat4_mulv3(mesh_instance->transform, &mesh_instance->mesh->vertices[i1 * 3], 1.f, triangle.p1);
+            glm_mat4_mulv3(mesh_instance->transform, &mesh_instance->mesh->vertices[i2 * 3], 1.f, triangle.p2);
+
+            if(trace_triangle(camera_pos, ray, &triangle, &temp_info))
+            {
+                wasHit = true;
+                float distance2 = glm_vec3_distance2(camera_pos, temp_info.pos);
+                if(distance2 < closest_distance2)
+                {
+                    closest_distance2 = distance2;
+                    *info = temp_info;
+                }
+            }
+        }
+
+        return wasHit;
+    }
+
     void read_from_obj(std::istream& input, Mesh* mesh)
     {
+        mesh->minPoint[0] = std::numeric_limits<float>::max();
+        mesh->minPoint[1] = std::numeric_limits<float>::max();
+        mesh->minPoint[2] = std::numeric_limits<float>::max();
+
+        mesh->maxPoint[0] = std::numeric_limits<float>::lowest();
+        mesh->maxPoint[1] = std::numeric_limits<float>::lowest();
+        mesh->maxPoint[2] = std::numeric_limits<float>::lowest();
+
         std::string line;
         while(std::getline(input, line))
         {
@@ -41,6 +83,33 @@ namespace MeshUtils
                     if(addr == end_addr)
                     {
                         continue;
+                    }
+
+                    if(x > mesh->maxPoint[0])
+                    {
+                         mesh->maxPoint[0] = x;
+                    }
+                    else if (x < mesh->minPoint[0])
+                    {
+                        mesh->minPoint[0] = x;
+                    }
+
+                    if(y > mesh->maxPoint[1])
+                    {
+                         mesh->maxPoint[1] = y;
+                    }
+                    else if (y < mesh->minPoint[1])
+                    {
+                        mesh->minPoint[1] = y;
+                    }
+
+                    if(z > mesh->maxPoint[2])
+                    {
+                         mesh->maxPoint[2] = z;
+                    }
+                    else if(z < mesh->minPoint[2])
+                    {
+                        mesh->minPoint[2] = z;
                     }
 
                     mesh->vertices.push_back(x);

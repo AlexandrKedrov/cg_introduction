@@ -5,6 +5,7 @@
 #include <limits>
 #include <functional>
 #include "../lesson_5/triangle.h"
+#include "../lesson_6/rasterizer.h"
 #include <fstream>
 
 #define SCREEN_WIDTH 1280
@@ -277,6 +278,64 @@ void fill_image(DrawBuffer* draw_buffer, MeshUtils::MeshInstance* mesh)
     }
 }
 
+void fill_image_rasterizer(DrawBuffer* draw_buffer, MeshUtils::MeshInstance* mesh)
+{
+    MeshUtils::Triangle triangle = 
+    {
+        {-50.f, -50.f, -130.f},
+        {0.f, 50.f, -130.f},
+        {50.f, -50.f, -130.f}
+    };
+
+    mat4 projection;
+    glm_perspective_rh_no(
+        glm_rad(45.f),
+        SCREEN_WIDTH / static_cast<float>(SCREEN_HEIGHT),
+        1e-2f, 1e3f,
+        projection 
+    );
+
+    float freq = 0.001f;
+
+    vec3 camera_pos = { 100.f * SDL_cosf(freq * static_cast<float>(SDL_GetTicks64())), 
+                        100.f, 
+                        100.f * SDL_sinf(freq * static_cast<float>(SDL_GetTicks64())) - 132.f };
+    vec3 look_at_pos = {0.f, 0.f, -132.f};
+    vec3 up_vector = {0.f, 1.f, 0.f};
+
+    mat4 look_at;
+    glm_lookat(camera_pos, look_at_pos, up_vector, look_at);    
+
+    mat4 screen;
+    glm_mat4_identity(screen);
+    screen[0][0] = SCREEN_WIDTH * 0.5f;
+    screen[3][0] = SCREEN_WIDTH * 0.5f;
+    screen[1][1] = -SCREEN_HEIGHT * 0.5f;
+    screen[3][1] = SCREEN_HEIGHT * 0.5f;
+
+    mat4 view_projection;
+    mat4 screen_inverse;
+    glm_mat4_mul(projection, look_at, view_projection);
+    glm_mat4_inv(screen, screen_inverse);
+
+    vec4 p0, p1, p2;
+    glm_vec4(triangle.p0, 1.f, p0);
+    glm_vec4(triangle.p1, 1.f, p1);
+    glm_vec4(triangle.p2, 1.f, p2);
+
+    glm_mat4_mulv(view_projection, p0, p0);
+    glm_mat4_mulv(view_projection, p1, p1);
+    glm_mat4_mulv(view_projection, p2, p2);
+
+    MeshUtils::Triangle triangle_ndc;
+    glm_vec3_divs(p0, p0[3], triangle_ndc.p0);
+    glm_vec3_divs(p1, p1[3], triangle_ndc.p1);
+    glm_vec3_divs(p2, p2[3], triangle_ndc.p2);
+
+    Rasterizer::draw_triangle(&triangle_ndc, screen, screen_inverse, draw_buffer);
+}
+
+
 int main(int argc, char** argv)
 {
     std::ifstream input("cube.obj");
@@ -367,13 +426,6 @@ int main(int argc, char** argv)
     DrawBuffer draw_buffer;
     draw_buffer_create(SCREEN_WIDTH, SCREEN_HEIGHT, renderer, &draw_buffer);
 
-    // Рисование на экране
-    draw_buffer_lock(&draw_buffer);
-    fill_image(&draw_buffer, &mesh_instance);
-    draw_buffer_unlock(&draw_buffer);
-    draw_buffer_show(&draw_buffer);
-    
-    SDL_RenderPresent(renderer);
 
     bool isRunning = true;
     while(isRunning)
@@ -391,6 +443,15 @@ int main(int argc, char** argv)
                 break;
             }
         }
+        // Рисование на экране
+
+        draw_buffer_lock(&draw_buffer);
+        memset(draw_buffer.buffer, 0, sizeof(Color) * draw_buffer.height * draw_buffer.width);
+        // fill_image(&draw_buffer, &mesh_instance);
+        fill_image_rasterizer(&draw_buffer, &mesh_instance);
+        draw_buffer_unlock(&draw_buffer);
+        draw_buffer_show(&draw_buffer);
+        SDL_RenderPresent(renderer);
     }
 
     SDL_DestroyWindow(window);

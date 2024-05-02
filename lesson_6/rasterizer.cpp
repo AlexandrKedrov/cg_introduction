@@ -2,7 +2,8 @@
 
 namespace Rasterizer
 {
-    void draw_triangle(MeshUtils::Triangle* triangle, mat4 screen, mat4 screen_inverse, DrawBuffer* draw_buffer)
+    void draw_triangle(MeshUtils::Triangle* triangle, mat4 screen, mat4 screen_inverse, 
+                       DrawBuffer* draw_buffer, float* z_buffer)
     {
         //vec3 clip_max = {1, 1, 1};
         //vec3 clip_min = {-1, -1, -1};
@@ -41,12 +42,20 @@ namespace Rasterizer
                 BarycentricCoords bar_coords;
                 if(rasterize_triangle(triangle, ndc_pos, &bar_coords))
                 {
-                    draw_buffer->buffer[draw_buffer->width * row + col] = 
+                    float z = triangle->p0[2] * bar_coords.v +
+                              triangle->p1[2] * bar_coords.s + 
+                              triangle->p2[2] * bar_coords.t;
+                    
+                    if(z < z_buffer[draw_buffer->width * row + col])
                     {
-                        static_cast<unsigned char>(255.f * bar_coords.s),
-                        static_cast<unsigned char>(255.f * bar_coords.t),
-                        static_cast<unsigned char>(255.f * bar_coords.v)
-                    };
+                        z_buffer[draw_buffer->width * row + col] = z;
+                        draw_buffer->buffer[draw_buffer->width * row + col] = 
+                        {
+                            static_cast<unsigned char>(255.f * bar_coords.s),
+                            static_cast<unsigned char>(255.f * bar_coords.t),
+                            static_cast<unsigned char>(255.f * bar_coords.v)
+                        };
+                    }
                 }
             }
         }

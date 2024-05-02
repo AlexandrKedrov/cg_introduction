@@ -13,6 +13,7 @@ namespace Rasterizer
         float s, t, v;
     };
 
-    void draw_triangle(MeshUtils::Triangle* triangle, mat4 screen, mat4 screen_inverse, DrawBuffer* draw_buffer);
+    void draw_triangle(MeshUtils::Triangle* triangle, mat4 screen, mat4 screen_inverse, 
+                       DrawBuffer* draw_buffer, float* z_buffer);
     bool rasterize_triangle(MeshUtils::Triangle* triangle, vec2 point, BarycentricCoords* coords);
 }

@@ -278,7 +278,7 @@ void fill_image(DrawBuffer* draw_buffer, MeshUtils::MeshInstance* mesh)
     }
 }
 
-void fill_image_rasterizer(DrawBuffer* draw_buffer, MeshUtils::MeshInstance* mesh)
+void fill_image_rasterizer(DrawBuffer* draw_buffer, float* z_buffer, MeshUtils::MeshInstance* mesh)
 {
     MeshUtils::Triangle triangle = 
     {
@@ -318,27 +318,38 @@ void fill_image_rasterizer(DrawBuffer* draw_buffer, MeshUtils::MeshInstance* mes
     glm_mat4_mul(projection, look_at, view_projection);
     glm_mat4_inv(screen, screen_inverse);
 
-    vec4 p0, p1, p2;
-    glm_vec4(triangle.p0, 1.f, p0);
-    glm_vec4(triangle.p1, 1.f, p1);
-    glm_vec4(triangle.p2, 1.f, p2);
+    for(size_t i = 0; i < mesh->mesh->indices.size(); i += 3)
+    {
+        size_t i0 = mesh->mesh->indices[i];
+        size_t i1 = mesh->mesh->indices[i + 1];
+        size_t i2 = mesh->mesh->indices[i + 2];
 
-    glm_mat4_mulv(view_projection, p0, p0);
-    glm_mat4_mulv(view_projection, p1, p1);
-    glm_mat4_mulv(view_projection, p2, p2);
+        vec4 p0, p1, p2;
+        glm_vec4(&mesh->mesh->vertices[3 * i0], 1.f, p0);
+        glm_vec4(&mesh->mesh->vertices[3 * i1], 1.f, p1);
+        glm_vec4(&mesh->mesh->vertices[3 * i2], 1.f, p2);
 
-    MeshUtils::Triangle triangle_ndc;
-    glm_vec3_divs(p0, p0[3], triangle_ndc.p0);
-    glm_vec3_divs(p1, p1[3], triangle_ndc.p1);
-    glm_vec3_divs(p2, p2[3], triangle_ndc.p2);
+        glm_mat4_mulv(mesh->transform, p0, p0);
+        glm_mat4_mulv(mesh->transform, p1, p1);
+        glm_mat4_mulv(mesh->transform, p2, p2);
 
-    Rasterizer::draw_triangle(&triangle_ndc, screen, screen_inverse, draw_buffer);
+        glm_mat4_mulv(view_projection, p0, p0);
+        glm_mat4_mulv(view_projection, p1, p1);
+        glm_mat4_mulv(view_projection, p2, p2);
+
+        MeshUtils::Triangle triangle_ndc;
+        glm_vec3_divs(p0, p0[3], triangle_ndc.p0);
+        glm_vec3_divs(p1, p1[3], triangle_ndc.p1);
+        glm_vec3_divs(p2, p2[3], triangle_ndc.p2);
+
+        Rasterizer::draw_triangle(&triangle_ndc, screen, screen_inverse, draw_buffer, z_buffer);
+    }
 }
 
 
 int main(int argc, char** argv)
 {
-    std::ifstream input("cube.obj");
+    std::ifstream input("teapot.obj");
     MeshUtils::Mesh mesh;
 
     MeshUtils::read_from_obj(input, &mesh);
@@ -352,7 +363,7 @@ int main(int argc, char** argv)
     mesh_instance.mesh = &mesh;
     glm_mat4_identity(mesh_instance.transform);
     vec3 translate = {0.f, 0.f, -132.f};
-    vec3 scale = {60.f, 60.f, 60.f};
+    vec3 scale = {10.f, 10.f, 10.f};
     glm_translate(mesh_instance.transform, translate);
     glm_scale(mesh_instance.transform, scale);
 
@@ -425,7 +436,12 @@ int main(int argc, char** argv)
 
     DrawBuffer draw_buffer;
     draw_buffer_create(SCREEN_WIDTH, SCREEN_HEIGHT, renderer, &draw_buffer);
-
+    std::vector<float> z_buffer(draw_buffer.width * draw_buffer.height);
+    std::vector<float> z_buffer_clean(draw_buffer.width * draw_buffer.height);
+    for(float& el : z_buffer_clean)
+    {
+        el = 1.f;
+    }
 
     bool isRunning = true;
     while(isRunning)
@@ -447,8 +463,9 @@ int main(int argc, char** argv)
 
         draw_buffer_lock(&draw_buffer);
         memset(draw_buffer.buffer, 0, sizeof(Color) * draw_buffer.height * draw_buffer.width);
+        memcpy(z_buffer.data(), z_buffer_clean.data(), sizeof(float) * z_buffer_clean.size());
         // fill_image(&draw_buffer, &mesh_instance);
-        fill_image_rasterizer(&draw_buffer, &mesh_instance);
+        fill_image_rasterizer(&draw_buffer, z_buffer.data(), &mesh_instance);
         draw_buffer_unlock(&draw_buffer);
         draw_buffer_show(&draw_buffer);
         SDL_RenderPresent(renderer);
